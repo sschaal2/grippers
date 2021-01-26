@@ -11,7 +11,7 @@
 namespace robotiq_2f_gripper {
 
 //////////////////////////////////////////////////////////////////////////////
-// sets gripper parameters, initializes communiction, and initializes gripper
+// sets gripper parameters
 //
 Robotiq2fGripper::Robotiq2fGripper(double max_gripper_width,
                                    double min_gripper_width,

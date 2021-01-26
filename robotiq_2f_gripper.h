@@ -1,4 +1,4 @@
-  //////////////////////////////////////////////////////////////////////////////////  
+//////////////////////////////////////////////////////////////////////////////////  
 // Control code for Robotiq 2-finger grippers via Modbus protocol. The
 // communication hardware is abstracted, i.e., can be USB/serial, eternet,
 // etc., as long as the modbus protocol is used. This base class
@@ -56,6 +56,9 @@ enum GripperInitialization {
 //
 class Robotiq2fGripper {
  public:
+  // gripper initizalization status
+  enum GripperInitialization gripper_init_status_ = kGripperUninitialized;
+
   //////////////////////////////////////////////////////////////////////////////
   // constructor
   //
@@ -81,7 +84,7 @@ class Robotiq2fGripper {
   virtual ~Robotiq2fGripper();
 
   //////////////////////////////////////////////////////////////////////////////
-  // initialize the tripper, including communication and calibration move
+  // initialize the gripper, including communication and calibration move
   // returns whether successful or not, and sets gripper_init_sttaus
   //
   // returns true/false for successful/failure
@@ -129,9 +132,6 @@ class Robotiq2fGripper {
 
 
  private:
-  // gripper initizalization status
-  enum GripperInitialization gripper_init_status_ = kGripperUninitialized;
-
   // these variables define the gripper specs, and are used to convert unit
   // variables to uint8_t variables, as needed in modbus command strings
   double max_gripper_force_;
