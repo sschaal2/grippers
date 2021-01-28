@@ -12,6 +12,9 @@
 // system includes
 #include <cstdlib>
 
+// local includes
+#include "serial_communication.h"
+
 namespace robotiq_2f_gripper {
   
   ////////////////////////////////////////////////////////////////////////////////
@@ -31,8 +34,6 @@ namespace robotiq_2f_gripper {
     // \param [in] max_gripper_force:    different grippers have different
     //                                   max force
     //
-    // returns true if initialization was successful, false otherwise
-    //
     Robotiq2fGripperSerial(double max_gripper_width,
 			   double min_gripper_width,
 			   double max_gripper_velocity,
@@ -45,6 +46,10 @@ namespace robotiq_2f_gripper {
     virtual ~Robotiq2fGripperSerial();
 
   private:
+
+    serial_communication::SerialCommunication *serial_comm_;
+    char serial_port_name_[100];
+    
 
     //////////////////////////////////////////////////////////////////////////////
     // initialize communication

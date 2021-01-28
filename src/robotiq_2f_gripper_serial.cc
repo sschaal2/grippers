@@ -30,8 +30,8 @@ namespace robotiq_2f_gripper {
 		     min_gripper_width,
 		     max_gripper_velocity,
 		     max_gripper_force) {
-    // start serial communication
-    SerialCommunication(serial_port_name, 115200, O_RDWR);
+
+    strcpy(serial_port_name_,serial_port_name);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -40,40 +40,47 @@ namespace robotiq_2f_gripper {
   Robotiq2fGripperSerial::~Robotiq2fGripperSerial() {
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
   // the following virtual functions are just for debugging
   //  without communiction device
   //
   bool Robotiq2fGripperSerial::InitializeCommunication() {
-    std::cout <<
-      "Starting communication: no interface has been provided" <<
-      "-- communicating with the void" << std::endl;
-    gripper_init_status_ =  kGripperNoCommunicationMode;
+
+    // start serial communication
+    serial_comm_ = new SerialCommunication(serial_port_name_, 115200, O_RDWR);
+    if (!serial_comm_->active_) {
+      std::cout << "Serial communication failed to initialize" << std::endl;
+      gripper_init_status_ = kGripperUninitialized;      
+      return false;
+    }
+    gripper_init_status_ = kGripperInitialized;
     return true;
   }
 
   bool Robotiq2fGripperSerial::CloseCommunication() {
-    std::cout << "Closing virtual communication" << std::endl;
+    delete serial_comm_;
     return true;
   }
 
   bool Robotiq2fGripperSerial::FlushCommunication() {
-    std::cout << "Flushing communication" << std::endl;
+    serial_comm_->clearSerial();
     return true;
   }
 
   bool Robotiq2fGripperSerial::SendGripperCommand(uint8_t *modbus_string, size_t len){
-    std::cout << "Sending modbus string ";
-    for (size_t i=0; i < len; ++i)
-      printf("%02x", modbus_string[i]);
-    std::cout << std::endl;
+    serial_comm_->writeSerial(len,(char *)modbus_string);
     return true;
   }
 
   bool Robotiq2fGripperSerial::ReceiveGripperResponse(uint8_t *modbus_string,
 						      size_t len,
 						      double timeout_seconds) {
-    std::cerr << "Receiving modbus string" << std::endl;
+    while (serial_comm_->checkSerial() < len) {
+      sleep(1);
+    }
+
+    serial_comm_->readSerial(len,(char *)modbus_string);
+    
     // timing should be done with usleep() and checked at about 200hz
     // until timeout_seconds are reached
     return true;

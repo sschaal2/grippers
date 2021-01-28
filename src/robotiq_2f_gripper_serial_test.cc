@@ -11,7 +11,7 @@ using robotiq_2f_gripper::Robotiq2fGripperSerial;
 // minmal test of class methods without connected communication interfacee
 bool Robotiq2fGripperSerialTest () {
   double position, force;
-  char port_name[] = "/port";
+  char port_name[] = "/dev/ttys001";
 
   Robotiq2fGripperSerial gripper(1., 0., 1., 1.,port_name);
   gripper.GripperInitialization();

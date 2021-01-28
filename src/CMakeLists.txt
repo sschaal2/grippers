@@ -31,6 +31,7 @@ set(CMAKE_BUILD_TYPE RelWithDebInfo) # Optimization with debugging info
 
 # local defines
 include_directories(BEFORE ../src)
+include_directories(BEFORE ../include)
 
 set(SOURCES
 	robotiq_2f_gripper.cc
@@ -38,8 +39,8 @@ set(SOURCES
 	)
 
 set(HEADERS
-	robotiq_2f_gripper.h
-	robotiq_2f_gripper_serial.h	
+	../include/robotiq_2f_gripper.h
+	../include/robotiq_2f_gripper_serial.h	
 	)
 
 add_library(grippers ${SOURCES})
@@ -47,9 +48,9 @@ install(FILES ${HEADERS} DESTINATION ${LAB_INCLUDES})
 install(TARGETS grippers ARCHIVE DESTINATION ${LAB_LIBDIR})
 
 add_executable(xr2f robotiq_2f_gripper_test.cc)
-target_link_libraries(xr2f grippers ${LAB_STD_LIBS})
+target_link_libraries(xr2f grippers comm ${LAB_STD_LIBS})
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/xr2f DESTINATION ${LAB_BINDIR})
 
 add_executable(xr2fs robotiq_2f_gripper_serial_test.cc)
-target_link_libraries(xr2fs grippers ${LAB_STD_LIBS})
+target_link_libraries(xr2fs grippers comm ${LAB_STD_LIBS})
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/xr2fs DESTINATION ${LAB_BINDIR})
