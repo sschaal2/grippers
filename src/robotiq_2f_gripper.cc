@@ -61,11 +61,12 @@ bool Robotiq2fGripper::GripperInitialization() {
 
   // generate the sequence of initialization commands -- see robotiq manual to
   // get the modbus commands explained.
-
+  double time_out = 10;
 
   // clear all faults, i.e., clear rACT
   CorrectModbusCRC(modbus_clear_rACT, sizeof(modbus_clear_rACT));
   FlushCommunication();
+
   if (!SendGripperCommand(modbus_clear_rACT, sizeof(modbus_clear_rACT)))
     return false;
 
@@ -75,31 +76,36 @@ bool Robotiq2fGripper::GripperInitialization() {
            sizeof(modbus_clear_rACT_response));
 
   if (!ReceiveGripperResponse(modbus_clear_rACT_response,
-                              sizeof(modbus_clear_rACT_response), 1.0))
+                              sizeof(modbus_clear_rACT_response), time_out))
     return false;
+
   if (memcmp(modbus_clear_rACT_response, modbus_clear_rACT_expected_response,
-             sizeof(modbus_clear_rACT_response)) != 0)
+             sizeof(modbus_clear_rACT_response)) != 0) {
+    printf("modbus_clear_rACT_response is wrong\n");
     return false;
+  }
 
 
   // set rACT: this triggers a calibration motion
   CorrectModbusCRC(modbus_set_rACT, sizeof(modbus_set_rACT));
   FlushCommunication();
-  if (!SendGripperCommand(modbus_set_rACT, sizeof(modbus_clear_rACT)))
+  if (!SendGripperCommand(modbus_set_rACT, sizeof(modbus_set_rACT)))
     return false;
 
   // just for debugging without communication
   if (gripper_init_status_ ==  kGripperNoCommunicationMode)
     memcpy(modbus_set_rACT_response, modbus_set_rACT_expected_response,
-           sizeof(modbus_clear_rACT_response));
+           sizeof(modbus_set_rACT_response));
 
-  if (!ReceiveGripperResponse(modbus_clear_rACT_response,
-                              sizeof(modbus_clear_rACT_response), 1.0))
+  if (!ReceiveGripperResponse(modbus_set_rACT_response,
+                              sizeof(modbus_set_rACT_response), time_out)) 
     return false;
-  if (memcmp(modbus_clear_rACT_response, modbus_clear_rACT_expected_response,
-             sizeof(modbus_clear_rACT_response)) != 0)
+  
+  if (memcmp(modbus_set_rACT_response, modbus_set_rACT_expected_response,
+             sizeof(modbus_set_rACT_response)) != 0) {
+    printf("modbus_sete_rACT_response is wrong\n");    
     return false;
-
+  }
 
   // read gripper status and wait for initialization
   CorrectModbusCRC(modbus_read_status, sizeof(modbus_read_status));
@@ -118,7 +124,7 @@ bool Robotiq2fGripper::GripperInitialization() {
   int counter = 10;
   do {
     if (!ReceiveGripperResponse(modbus_read_status_response,
-                                sizeof(modbus_read_status_response), 1.0))
+                                sizeof(modbus_read_status_response), time_out))
       return false;
 
     if (memcmp(modbus_read_status_response,
@@ -128,8 +134,10 @@ bool Robotiq2fGripper::GripperInitialization() {
 
     if (memcmp(modbus_read_status_response,
                modbus_read_status_response_not_activated,
-               sizeof(modbus_read_status_response)) != 0)
+               sizeof(modbus_read_status_response)) != 0) {
+      printf("modbus_read_status_response is wrong\n");          
       return false;
+    }
   } while (--counter > 0);
 
 

@@ -49,7 +49,6 @@ namespace robotiq_2f_gripper {
 
     serial_communication::SerialCommunication *serial_comm_;
     char serial_port_name_[100];
-    
 
     //////////////////////////////////////////////////////////////////////////////
     // initialize communication

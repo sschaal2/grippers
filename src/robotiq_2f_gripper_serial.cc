@@ -58,6 +58,7 @@ namespace robotiq_2f_gripper {
   }
 
   bool Robotiq2fGripperSerial::CloseCommunication() {
+    printf("cc--------------------------------\n");
     delete serial_comm_;
     return true;
   }
@@ -68,15 +69,24 @@ namespace robotiq_2f_gripper {
   }
 
   bool Robotiq2fGripperSerial::SendGripperCommand(uint8_t *modbus_string, size_t len){
-    serial_comm_->writeSerial(len,(char *)modbus_string);
+    int len_written = serial_comm_->writeSerial(len,(char *)modbus_string);
+    if (len != len_written) {
+      printf("Error in SendGripperCommand: not all bytes written: %d != %d\n",len,len_written);
+    }
     return true;
   }
 
   bool Robotiq2fGripperSerial::ReceiveGripperResponse(uint8_t *modbus_string,
 						      size_t len,
 						      double timeout_seconds) {
-    while (serial_comm_->checkSerial() < len) {
-      sleep(1);
+    int count = 0;
+    
+    while (true) {
+      usleep(5000); // sleep at 200Hz
+      if (serial_comm_->checkSerial() >= len)
+	break;
+      if (++count > timeout_seconds * 200)
+	return false;
     }
 
     serial_comm_->readSerial(len,(char *)modbus_string);
