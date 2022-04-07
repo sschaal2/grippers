@@ -24,10 +24,9 @@ Robotiq2fGripper::Robotiq2fGripper(double max_gripper_width,
 }
 
 //////////////////////////////////////////////////////////////////////////////
-// need to close out the communication
+// need to close out the communication: but this has to done in child class
 //
 Robotiq2fGripper::~Robotiq2fGripper() {
-  CloseCommunication();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -66,7 +65,6 @@ bool Robotiq2fGripper::GripperInitialization() {
   // clear all faults, i.e., clear rACT
   CorrectModbusCRC(modbus_clear_rACT, sizeof(modbus_clear_rACT));
   FlushCommunication();
-
   if (!SendGripperCommand(modbus_clear_rACT, sizeof(modbus_clear_rACT)))
     return false;
 
@@ -107,43 +105,52 @@ bool Robotiq2fGripper::GripperInitialization() {
     return false;
   }
 
-  // read gripper status and wait for initialization
-  CorrectModbusCRC(modbus_read_status, sizeof(modbus_read_status));
-  FlushCommunication();
-  if (!SendGripperCommand(modbus_read_status, sizeof(modbus_read_status)))
-    return false;
+  // read gripper status and wait for initialization:
+  // this needs to be tried a few times until gripper initiatlize motion
+  // is finished
+  int counter = 1000;
+  while (--counter >= 0) {
+    
+    CorrectModbusCRC(modbus_read_status, sizeof(modbus_read_status));
+    FlushCommunication();
+    if (!SendGripperCommand(modbus_read_status, sizeof(modbus_read_status)))
+      return false;
+    
+    // just for debugging without communication
+    if (gripper_init_status_ ==  kGripperNoCommunicationMode)
+      memcpy(modbus_read_status_response,
+	     modbus_read_status_response_is_activated,
+	     sizeof(modbus_read_status_response));
 
-  // just for debugging without communication
-  if (gripper_init_status_ ==  kGripperNoCommunicationMode)
-    memcpy(modbus_read_status_response,
-           modbus_read_status_response_is_activated,
-           sizeof(modbus_read_status_response));
-
-  // wait a few seconds before giving up: only is_actived and
-  // not_activated respones are allowed
-  int counter = 10;
-  do {
+    // only is_actived and not_activated respones are allowed
     if (!ReceiveGripperResponse(modbus_read_status_response,
-                                sizeof(modbus_read_status_response), time_out))
+				sizeof(modbus_read_status_response), time_out))
       return false;
-
+    
     if (memcmp(modbus_read_status_response,
-               modbus_read_status_response_is_activated,
-               sizeof(modbus_read_status_response)) == 0)
+	       modbus_read_status_response_is_activated,
+	       sizeof(modbus_read_status_response)) == 0) {
+      gripper_init_status_ = kGripperInitialized;      
       break;
-
-    if (memcmp(modbus_read_status_response,
-               modbus_read_status_response_not_activated,
-               sizeof(modbus_read_status_response)) != 0) {
-      printf("modbus_read_status_response is wrong\n");          
-      return false;
+    } else if (memcmp(modbus_read_status_response,
+		      modbus_read_status_response_not_activated,
+		      sizeof(modbus_read_status_response)) != 0) {
+      gripper_init_status_ = kGripperUninitialized;            
+      continue;
     }
-  } while (--counter > 0);
+  }
 
+  if (counter < 0) {
+    printf("Gripper failed to initialize\n");
+    return false;
+  }
 
   // finally initialized properly
   if (gripper_init_status_ != kGripperNoCommunicationMode)
     gripper_init_status_ = kGripperInitialized;
+
+  // sleep a bit to make that initializtion movement of fingers is over
+  sleep(1);
 
   return true;
 }
@@ -284,18 +291,21 @@ GripperStatus Robotiq2fGripper::
                                   double desired_force,
                                   double timeout_seconds) {
   // 200Hz  is what  Robotiq recommends as highest frequency
-  double        sleep_time = 0.005;
+  double        sleep_time = 0.05;
   int           counter    = timeout_seconds/sleep_time;
   GripperStatus status     = kGripperFingersInMotion;
   double        position, force;
 
   // start the gripper motion
-  if (GripperControlCommand(desired_position, desired_velocity, desired_force)
-      == kGripperCommandUnsuccessful)
+  if (GripperControlCommand(desired_position, desired_velocity, desired_force) 
+      == kGripperCommandUnsuccessful) {
+    printf("Gripper command was unsuccessful\n");
     return kGripperCommandUnsuccessful;
+  }
 
-  // read status as long as fingers are moving
+  // read status as long as fingers are moving: manual tuned time outs ...
   do {
+    usleep(sleep_time*1000000.);
     status = GetGripperStatus(&position, &force, sleep_time);
   } while (--counter > 0 && status == kGripperFingersInMotion);
 
@@ -325,18 +335,21 @@ GripperStatus Robotiq2fGripper::GetGripperStatus(double *position,
   do {
     if (ReceiveGripperResponse(modbus_read_status_response,
                                sizeof(modbus_read_status_response),
-                               sleep_time))
+                               sleep_time*10.)) // empirically tuned time_out
       break;
   } while (--counter > 0);
 
-  if (counter <= 0)
+  if (counter <= 0) {
+    printf("Get gripper status was unsuccessful\n");
     return kGripperCommandUnsuccessful;
+  }
 
   // analyze the return bytes to extract status
   uint8_t status_byte = modbus_read_status_response[3];
-  uint8_t gOBJ = (0b11000000 && status_byte) >> 6;
+  uint8_t gOBJ = (0b11000000 & status_byte) >> 6;
 
-  *position = ((double)(modbus_read_status_response[7])/
+  // position byte: (0xff is fully closed, position is gripper opening width)
+  *position = (1.0 - (double)(modbus_read_status_response[7])/
                (double)(0xff))*(max_gripper_width_ - min_gripper_width_) +
       min_gripper_width_;
   *force = ((double)(modbus_read_status_response[7])/

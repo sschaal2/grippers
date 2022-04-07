@@ -38,11 +38,11 @@ namespace robotiq_2f_gripper {
   // all necessary jobs are done in base class
   //
   Robotiq2fGripperSerial::~Robotiq2fGripperSerial() {
+    CloseCommunication();
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  // the following virtual functions are just for debugging
-  //  without communiction device
+  // the following virtual functions overloads for serial communication
   //
   bool Robotiq2fGripperSerial::InitializeCommunication() {
 
@@ -58,7 +58,6 @@ namespace robotiq_2f_gripper {
   }
 
   bool Robotiq2fGripperSerial::CloseCommunication() {
-    printf("cc--------------------------------\n");
     delete serial_comm_;
     return true;
   }
@@ -72,6 +71,7 @@ namespace robotiq_2f_gripper {
     int len_written = serial_comm_->writeSerial(len,(char *)modbus_string);
     if (len != len_written) {
       printf("Error in SendGripperCommand: not all bytes written: %d != %d\n",len,len_written);
+      return false;
     }
     return true;
   }
