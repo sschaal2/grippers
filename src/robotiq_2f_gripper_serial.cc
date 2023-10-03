@@ -47,7 +47,7 @@ namespace robotiq_2f_gripper {
   bool Robotiq2fGripperSerial::InitializeCommunication() {
 
     // start serial communication
-    serial_comm_ = new SerialCommunication(serial_port_name_, 115200, O_RDWR);
+    serial_comm_ = new SerialCommunication(serial_port_name_, B115200, O_RDWR);
     if (!serial_comm_->active_) {
       std::cout << "Serial communication failed to initialize" << std::endl;
       gripper_init_status_ = kGripperUninitialized;      
