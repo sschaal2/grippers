@@ -83,7 +83,6 @@ bool Robotiq2fGripper::GripperInitialization() {
     return false;
   }
 
-
   // set rACT: this triggers a calibration motion
   CorrectModbusCRC(modbus_set_rACT, sizeof(modbus_set_rACT));
   FlushCommunication();
@@ -138,6 +137,9 @@ bool Robotiq2fGripper::GripperInitialization() {
       gripper_init_status_ = kGripperUninitialized;            
       continue;
     }
+
+    // sleep a moment
+    usleep(1000);
   }
 
   if (counter < 0) {
@@ -151,6 +153,7 @@ bool Robotiq2fGripper::GripperInitialization() {
 
   // sleep a bit to make that initializtion movement of fingers is over
   sleep(1);
+  printf("Gripper initialized successfully\n");
 
   return true;
 }
@@ -201,7 +204,7 @@ bool Robotiq2fGripper::ReceiveGripperResponse(uint8_t *modbus_string,
 void Robotiq2fGripper::CorrectModbusCRC(uint8_t *modbus_string, size_t len) {
   uint16_t crc = 0xFFFF;
 
-  for (int pos = 0; pos < len-2; pos++) {
+  for (size_t pos = 0; pos < len-2; pos++) {
     crc ^= modbus_string[pos];        // XOR byte into least sig. byte of crc
     for (int i = 8; i != 0; i--) {    // Loop over each bit
       if ((crc & 0x0001) != 0) {      // If the LSB is set
