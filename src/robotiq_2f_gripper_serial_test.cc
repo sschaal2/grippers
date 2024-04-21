@@ -14,7 +14,7 @@ bool Robotiq2fGripperSerialTest (int repeats) {
   double position, force;
   char port_name[] = "/dev/ttyUSB1";
 
-  Robotiq2fGripperSerial gripper(0.085, 0., 0.15, 220.,port_name);
+  Robotiq2fGripperSerial gripper(0.085, 0., 0.15, 235.0,port_name);
   gripper.GripperInitialization();
 
   
@@ -26,16 +26,35 @@ bool Robotiq2fGripperSerialTest (int repeats) {
   //  gripper.GripperControlCommand(0.07, 1, 1);
 
   for (int i=1; i<=repeats; ++i) {
-    gripper.GripperControlCommandBlocking(0.02, 1, 200, 1.0);
+    gripper.GripperControlCommandBlocking(0.02, 0.15, 100, 1.0);
     
     std::cout << "Gripper status = " <<
       gripper.GetGripperStatus(&position, &force, 1.0) << std::endl;
 
-    gripper.GripperControlCommandBlocking(0.08, 1, 200, 1.0);
+    gripper.GripperControlCommandBlocking(0.08, 0.15, 100, 1.0);
     
     std::cout << "Gripper status = " <<
       gripper.GetGripperStatus(&position, &force, 1.0) << std::endl;
 
+  }
+
+  // A simple streaming of gripper updates.
+  double gripper_width = 0.085;
+  double step = 0.005;
+  gripper.GripperControlCommandBlocking(gripper_width, 0.15, 100, 1.0);
+  
+  for (int i=1; i<=30; ++i) {
+    if ( i <= 15) {
+      gripper_width = 0.085 - (double)i * step;
+    } else {
+      gripper_width = 0.085 - (double)(30-i) * step;      
+    }
+    gripper.GripperControlCommand(gripper_width, 0.15, 100);
+    // Wait appropriately for the gripper to reach position.
+    usleep(step/0.15*1000000.0);
+
+    std::cout << "Gripper status = " <<
+      gripper.GetGripperStatus(&position, &force, 1.0) << std::endl;
   }
 
   return true;
